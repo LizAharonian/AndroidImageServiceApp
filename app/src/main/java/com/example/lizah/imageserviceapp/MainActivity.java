@@ -1,5 +1,6 @@
 package com.example.lizah.imageserviceapp;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
@@ -13,9 +14,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void startService(View view) {
-        return;
+        Intent intent = new Intent(this, ImageService.class);
+        startService(intent);
     }
     public void stopService(View  view) {
-
+        Intent intent = new Intent(this, ImageService.class);
+        stopService(intent);
     }
 }

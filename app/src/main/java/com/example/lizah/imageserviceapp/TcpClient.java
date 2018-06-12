@@ -1,3 +1,5 @@
+package com.example.lizah.imageserviceapp;
+
 import android.util.Log;
 
 import java.io.ByteArrayOutputStream;
