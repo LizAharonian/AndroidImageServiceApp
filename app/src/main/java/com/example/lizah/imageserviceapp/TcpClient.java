@@ -9,19 +9,28 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.util.List;
 
 public class TcpClient {
-    public static void main(String argv[]) throws Exception {
+
+    List<File> picsFilesList;
+    public  TcpClient(List<File> myPicsFilesList){
+        picsFilesList=myPicsFilesList;
+    }
+
+    public void startCommunication() throws Exception {
+
+
         try {
             //here you must put your computer's IP address.
             InetAddress serverAddr = InetAddress.getByName("10.0.2.2");
             //create a socket to make the connection with the server
-            Socket socket = new Socket(serverAddr, 1234);
+            Socket socket = new Socket(serverAddr, 7999);
             try {
                 OutputStream output = socket.getOutputStream();
                 //FileInputStream fis = new FileInputStream(pic);
 
-                output.write(extractBytes("C:\\Users\\lizah\\OneDrive\\תמונות\\Saved Pictures\\אילנה.jpg"));
+                output.write(extractBytes(picsFilesList.get(0).getAbsolutePath()));
                 output.flush();
             } catch (Exception e) {
                 Log.e("TCP", "S: Error", e);
