@@ -6,10 +6,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.util.List;
+
+import static java.lang.Thread.sleep;
 
 public class TcpClient {
 
@@ -24,60 +27,53 @@ public class TcpClient {
         try {
             //here you must put your computer's IP address.
             InetAddress serverAddr = InetAddress.getByName("10.0.2.2");
-            //create a socket to make the connection with the server
-            Socket socket = new Socket(serverAddr, 7999);
-            try {
-                OutputStream output = socket.getOutputStream();
-                //FileInputStream fis = new FileInputStream(pic);
 
-                output.write(extractBytes(picsFilesList.get(0).getAbsolutePath()));
-                output.flush();
+            try {
+                for (File file:picsFilesList) {
+
+                    //create a socket to make the connection with the server
+                Socket socket = new Socket(serverAddr, 7999);
+                OutputStream output = socket.getOutputStream();
+                InputStream input = socket.getInputStream();
+
+                    //write image name to server
+                    String name = file.getName();
+                    output.write(file.getName().getBytes());
+                    //confirm from server he got the name
+                    byte[] confirmation = new byte[1];
+                    int result = input.read(confirmation);
+                    sleep(600);
+                    if (result == 1) {
+                        output.write(extractBytes(file));
+                    }
+                    output.flush();
+                }
             } catch (Exception e) {
                 Log.e("TCP", "S: Error", e);
             } finally {
-                socket.close();
-
+               //socket.close();
             }
         }catch (Exception e){
             Log.e("TCP", "C: Error", e);
         }
     }
 
-    public static byte[] extractBytes (String imageName) throws IOException {
-        // open image
-        File file = new File(imageName);
-        System.out.println(file.exists() + "!!");
+    public static byte[] extractBytes (File file) throws IOException {
+
+
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        byte[] buffer = new byte[1024];
         FileInputStream fis = new FileInputStream(file);
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        byte[] buf = new byte[1024];
         try {
-            for (int readNum; (readNum = fis.read(buf)) != -1;) {
-                bos.write(buf, 0, readNum);
-                //no doubt here is 0
-                /*Writes len bytes from the specified byte array starting at offset
-                off to this byte array output stream.*/
-                System.out.println("read " + readNum + " bytes,");
+            int i;
+            while ((i=fis.read(buffer))!=-1) {
+                stream.write(buffer, 0, i);
             }
+
         } catch (IOException ex) {
-           // Logger.getLogger(ConvertImage.class.getName()).log(Level.SEVERE, null, ex);
         }
-        return bos.toByteArray();
+        return stream.toByteArray();
+
     }
-
-
-
-
-/*
-        String sentence;
-        String modifiedSentence;
-        BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));
-        Socket clientSocket = new Socket("localhost", 6789);
-        DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
-        BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-        sentence = inFromUser.readLine();
-        outToServer.writeBytes(sentence + '\n');
-        modifiedSentence = inFromServer.readLine();
-        System.out.println("FROM SERVER: " + modifiedSentence);
-        clientSocket.close();*/
 
 }
