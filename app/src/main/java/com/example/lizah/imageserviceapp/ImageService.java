@@ -22,17 +22,30 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ImageService extends Service {
+    //members
     IntentFilter intentFilter= new IntentFilter();;
     BroadcastReceiver broadcastReceiver;
     List<File> files;
 
+
+    /**
+     * onBind function.
+     * returns null.
+     */
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
         return null;
     }
 
-
+    /**
+     * onStartCommand function.
+     * define what happens when service is on.
+     * @param intent - an abstract description of an operation to be performed.
+     * @param flags - int type of flag.
+     * @param startID - id.
+     * @return START_STICKY.
+     */
     @Override
     public int onStartCommand(Intent intent, int flags, int startID) {
         Toast.makeText(this, "Image service started...", Toast.LENGTH_LONG).show();
@@ -56,6 +69,11 @@ public class ImageService extends Service {
         return START_STICKY;
     }
 
+    /**
+     * startTransfer function.
+     * starts transfer the photos.
+     * @param context
+     */
     @RequiresApi(api = Build.VERSION_CODES.O)
     private void startTransfer(Context context) {
         //set notification progress bar
@@ -73,6 +91,7 @@ public class ImageService extends Service {
                     int barState = 0;
                     updatePicsFilesList();
                     for (File file : files) {
+                        //crete new tcp client to talk with server
                         TcpClient tcpClient = new TcpClient(file);
                         //talk to image service and send him the photo
                         tcpClient.startCommunication();
@@ -93,23 +112,38 @@ public class ImageService extends Service {
         }).start();
     }
 
-
+    /**
+     * onCreate function.
+     * defines what happens when service is on.
+     */
     @Override
     public void onCreate() {
         super.onCreate();
+        //brodcast reciver issues ..
         this.intentFilter.addAction("android.net.wifi.supplicant.CONNECTION_CHANGE");
         this.intentFilter.addAction("android.net.wifi.STATE_CHANGE");
     }
 
+    /**
+     * onDestroy function.
+     * defines what happens when service is destroyed.
+     */
     @Override
     public void onDestroy() {
         Toast.makeText(this, "Image service stopped...", Toast.LENGTH_LONG).show();
         this.unregisterReceiver(this.broadcastReceiver);
     }
 
-    public void getOneFile(File e, List<File> picsFilesList) {
-        File[] dirFiles = e.listFiles();
-        for (int i=0; i <dirFiles.length; i++) {
+    /**
+     * getOneFile function.
+     * gets one file from dcim
+     * @param dir - dir of files
+     * @param picsFilesList - list of pic files
+     */
+    public void getOneFile(File dir, List<File> picsFilesList) {
+        File[] dirFiles = dir.listFiles();
+        int len = dirFiles.length;
+        for (int i=0; i <len; i++) {
             if (dirFiles[i].isDirectory()) {
                 getOneFile(dirFiles[i], picsFilesList);
             } else if(dirFiles[i].toString().contains(".jpg")) {
@@ -118,20 +152,27 @@ public class ImageService extends Service {
         }
     }
 
+    /**
+     * updatePicsFilesList function.
+     * updates files list (our member)
+     */
     public void updatePicsFilesList() {
         File dcim = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
-        File[] pics = dcim.listFiles();
+        //get the dirs
+        File[] fileOrDir = dcim.listFiles();
         List<File> picsFilesList = new ArrayList<File>();
-        if (pics != null) {
-            for (int i=0; i <pics.length; i++) {
-                if (pics[i].isDirectory()) {
-                    getOneFile(pics[i], picsFilesList);
-                } else if(pics[i].toString().contains(".jpg")) {
-                    picsFilesList.add(pics[i]);
+        int len =fileOrDir.length;
+        if (fileOrDir != null) {
+            for (int i=0; i <len; i++) {
+                //check if dir
+                if (fileOrDir[i].isDirectory()) {
+                    getOneFile(fileOrDir[i], picsFilesList);
+                } else if(fileOrDir[i].toString().contains(".jpg")) { //check if file
+                    picsFilesList.add(fileOrDir[i]);
                 }
             }
         }
-
+        //update the member
         files = picsFilesList;
     }
 
