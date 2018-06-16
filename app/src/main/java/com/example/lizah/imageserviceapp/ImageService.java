@@ -1,10 +1,20 @@
 package com.example.lizah.imageserviceapp;
 
+import android.app.NotificationManager;
 import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.Environment;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
+import android.support.annotation.RequiresApi;
+import android.support.v4.app.NotificationCompat;
 import android.widget.Toast;
 
 import java.io.File;
@@ -12,73 +22,117 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ImageService extends Service {
-    private int counter = 0;
-
+    IntentFilter intentFilter= new IntentFilter();;
+    BroadcastReceiver broadcastReceiver;
+    List<File> files;
 
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
         return null;
     }
+
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startID) {
         Toast.makeText(this, "Image service started...", Toast.LENGTH_LONG).show();
+        this.broadcastReceiver = new BroadcastReceiver() {
+            @RequiresApi(api = Build.VERSION_CODES.O)
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+                NetworkInfo networkInfo = intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
+                if (networkInfo != null) {
+                    if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI) {
+                        if (networkInfo.getState() == NetworkInfo.State.CONNECTED) {
+                            //start transfer
+                            startTransfer(context);
+                        }
+                    }
+                }
+            }
+        };
+        this.registerReceiver(this.broadcastReceiver, intentFilter);
         return START_STICKY;
     }
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        //requestPermission();
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private void startTransfer(Context context) {
+        //set notification progress bar
+        final NotificationCompat.Builder builder = new NotificationCompat.Builder(context, "default");
+        final int notifyId = 1;
+        final NotificationManager NM = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        builder.setSmallIcon(R.drawable.ic_launcher_background);
+        builder.setContentTitle("Passing images...");
+        builder.setContentText("Passing in progress...");
+        //start the transfer
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    TcpClient tcpClient = new TcpClient(getPicsFilesList());
-                    tcpClient.startCommunication();
+                    int barState = 0;
+                    updatePicsFilesList();
+                    for (File file : files) {
+                        TcpClient tcpClient = new TcpClient(file);
+                        //talk to image service and send him the photo
+                        tcpClient.startCommunication();
+                        //update the progress bar
+                        barState = barState + 100 / files.size();
+                        builder.setProgress(100, barState, false);
+                        NM.notify(notifyId, builder.build());
 
-                }catch (Exception ex) {
-
-
+                    }
+                    //finish
+                    builder.setProgress(0, 0, false);
+                    builder.setContentTitle("Finished transfer!");
+                    builder.setContentText("Finished transfer!");
+                    NM.notify(notifyId, builder.build());
+                } catch (Exception ex) {
                 }
-        }}).start();
+            }
+        }).start();
+    }
 
 
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        this.intentFilter.addAction("android.net.wifi.supplicant.CONNECTION_CHANGE");
+        this.intentFilter.addAction("android.net.wifi.STATE_CHANGE");
     }
 
     @Override
     public void onDestroy() {
         Toast.makeText(this, "Image service stopped...", Toast.LENGTH_LONG).show();
+        this.unregisterReceiver(this.broadcastReceiver);
     }
 
-    public void getJPG(File e, List<File> picsFilesList) {
+    public void getOneFile(File e, List<File> picsFilesList) {
         File[] dirFiles = e.listFiles();
         for (int i=0; i <dirFiles.length; i++) {
             if (dirFiles[i].isDirectory()) {
-                getJPG(dirFiles[i], picsFilesList);
+                getOneFile(dirFiles[i], picsFilesList);
             } else if(dirFiles[i].toString().contains(".jpg")) {
                 picsFilesList.add(dirFiles[i]);
             }
         }
     }
 
-    public List<File> getPicsFilesList() {
+    public void updatePicsFilesList() {
         File dcim = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
-        if (dcim == null) {
-            return null;
-        }
         File[] pics = dcim.listFiles();
         List<File> picsFilesList = new ArrayList<File>();
         if (pics != null) {
             for (int i=0; i <pics.length; i++) {
                 if (pics[i].isDirectory()) {
-                    getJPG(pics[i], picsFilesList);
+                    getOneFile(pics[i], picsFilesList);
                 } else if(pics[i].toString().contains(".jpg")) {
                     picsFilesList.add(pics[i]);
                 }
             }
         }
 
-        return picsFilesList;
+        files = picsFilesList;
     }
 
 }

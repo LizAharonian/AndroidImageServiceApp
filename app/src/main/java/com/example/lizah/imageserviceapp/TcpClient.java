@@ -17,8 +17,9 @@ import static java.lang.Thread.sleep;
 public class TcpClient {
 
     List<File> picsFilesList;
-    public  TcpClient(List<File> myPicsFilesList){
-        picsFilesList=myPicsFilesList;
+    File file;
+    public  TcpClient(File myFile){
+        file = myFile;
     }
 
     public void startCommunication() throws Exception {
@@ -29,7 +30,7 @@ public class TcpClient {
             InetAddress serverAddr = InetAddress.getByName("10.0.2.2");
 
             try {
-                for (File file:picsFilesList) {
+
 
                     //create a socket to make the connection with the server
                 Socket socket = new Socket(serverAddr, 7999);
@@ -47,7 +48,6 @@ public class TcpClient {
                         output.write(extractBytes(file));
                     }
                     output.flush();
-                }
             } catch (Exception e) {
                 Log.e("TCP", "S: Error", e);
             } finally {
